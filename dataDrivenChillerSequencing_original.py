@@ -63,15 +63,20 @@ CN = 5 #the total number of chillers
 print
 
 def mainFunc(): 
-    #SingleTaskLearning() #Single Task Learning #Learning with All Samples of All Chillers	
+    SingleTaskLearning() #Single Task Learning #Learning with All Samples of All Chillers	
     #IndependentTaskLearning() #Independent Task Learning  #Learn with All Samples on the Targeted Chiller.    
-    ClusteredMultitaskLearning() #Clustered Multi-task Learning #Clustered All Samples of All Chillers
+    #ClusteredMultitaskLearning() #Clustered Multi-task Learning #Clustered All Samples of All Chillers
     ##tpClusteredMultitaskLearning() #Two-phased Clustered Multi-task Learning #Learn with Clustered Samples on Multiple Chillers of the Same Type
-      
+
 
     #SequencingCompareMulti() #Sequencing using multiple clustered learning
     #SequencingCompare() #Sequencing using clustered learning on the single targeted chiller
     #SingleClusteredLearning() #Learn with Clustered Samples on the Targeted Chiller.
+    
+    #returnXy(3)
+    #returnXy(4)
+    #returnXy(5)
+    #returnXy(7)
 
 # Data preprocessing: calculate cooling load of everyday as constraint of chiller sequencing optimization
 def dailyLoads(L):

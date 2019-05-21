@@ -79,6 +79,28 @@ def mainFunc():
     #SequencingCompareMulti() #Sequencing using multiple clustered learning
     #SequencingCompare() #Sequencing using clustered learning on the single targeted chiller
     #SingleClusteredLearning() #Learn with Clustered Samples on the Targeted Chiller.
+    x1 = []
+    x2 = []
+    y1 = []
+    y2 = []
+    for i in range(3):
+        print 'i =', i
+        x1,y1 = returnXy(i)
+        x2,y2 = returnXy2(i)
+        valider_influxdb(x1,x2,y1,y2)
+ 
+    x61,y61 = returnXy(6)
+    x62,y62 = returnXy2(6)
+    valider_influxdb(x61,x62,y61,y62)
+
+def valider_influxdb(x1,x2,y1,y2):
+    for i in range(len(x1)):
+        if x1[i] != x2[i]:
+            print 'error'
+
+    for i in range(len(y1)):
+        if y1[i] != y2[i]: 
+            print 'error'
 
 # Data preprocessing: calculate cooling load of everyday as constraint of chiller sequencing optimization
 def dailyLoads(L):
@@ -533,7 +555,7 @@ def learning(clf, tX, ty, pX, py):
 # mode == 6: training 0 to L * K, all samples of multiple chillers of the SAME type based on targeted days
 # mode == 7: training 0 to L * K, clustered samples of multiple chillers of the SAME type based on targeted days
 def returnXy(mode=0, pX=None, index=None, K = TRAINK):
-    print '    K =', K, ' Mode =' , mode
+#    print '    K =', K, ' Mode =' , mode
     temp = returnDataA(1, 0)[3]
     
     #train index: 0 to L * K
@@ -630,30 +652,13 @@ def returnXy(mode=0, pX=None, index=None, K = TRAINK):
                     Xt.append([])
                     
                 for fi in range(TN):
-                    arr2 = returnDataA(ci, fi)[3][st:ed]
-
-                    chiller = GetChillerName(ci)
-                    data_type = GetDatatype(fi)
-                    arr = ReturnDataInfluxdb(chiller, data_type)[1][st:ed]
-
-                    for i in range(len(arr)):
-                        if arr[i] != arr2[i]:
-                            print 'error'
-
+                    arr = returnDataA(ci, fi)[3][st:ed]
                     for xi in range(0, ed-st, 1):
                         Xt[ci*(ed-st)+xi].append(arr[xi])
                 
                 
                 cop = []
-                cop2 = returnDataA(ci, TCOP)[3][st:ed]
-
-                chiller = GetChillerName(ci)
-                data_type = GetDatatype(TCOP)
-                cop = ReturnDataInfluxdb(chiller, data_type)[1][st:ed]
-                for i in range(len(cop))
-                    if cop[i] != cop2[i]:
-                        print 'error'
-
+                cop = returnDataA(ci, TCOP)[3][st:ed]
                 for yi in range(0, ed-st, 1):
                     yt.append(cop[yi])
                     
@@ -737,30 +742,13 @@ def returnXy(mode=0, pX=None, index=None, K = TRAINK):
                     Xt.append([])
                     
                 for fi in range(TN):
-                    arr2 = returnDataA(ci, fi)[3][st:ed]
-
-                    chiller = GetChillerName(ci)
-                    data_type = GetDatatype(fi)
-                    arr = ReturnDataInfluxdb(chiller, data_type)[1][st:ed]
-
-                    for i in range(len(arr)):
-                        if arr[i] != arr2[i]:
-                            print 'error'
-
+                    arr = returnDataA(ci, fi)[3][st:ed]
                     for xi in range(0, ed-st, 1):
                         Xt[ci*(ed-st)+xi].append(arr[xi])
                 
                 
                 cop = []
-                cop2 = returnDataA(ci, TCOP)[3][st:ed]
-
-                chiller = GetChillerName(ci)
-                data_type = GetDatatype(TCOP)
-                cop = ReturnDataInfluxdb(chiller, data_type)[1][st:ed]
-                for i in range(len(cop))
-                    if cop[i] != cop2[i]:
-                        print 'error'
-
+                cop = returnDataA(ci, TCOP)[3][st:ed]
                 for yi in range(0, ed-st, 1):
                     yt.append(cop[yi])
                     
@@ -786,7 +774,201 @@ def returnXy(mode=0, pX=None, index=None, K = TRAINK):
           
     return X, y
     
+
+def returnXy2(mode=0, pX=None, index=None, K = TRAINK):
+#    print '    K =', K, ' Mode =' , mode
+    temp = returnDataA(1, 0)[3]
     
+    #train index: 0 to L * K
+    #predict index: L * K to L
+    L = len(temp)
+#    print 'L=', L ###
+#    print 'K=', K ###
+    
+    if mode == 5: #single sample with index
+        st = index
+        ed = index + 1
+    else:
+        if mode == 0:
+            st = 0 
+            ed = int(L * K) 
+        elif mode == 1:
+            st = int(L * K) 
+            ed = L
+        elif mode == 2:
+            st = 0
+            ed = L
+        elif mode == 3 or mode == 4 or mode == 6 or mode == 7:
+            st = 0
+            ed = int(L * K)
+    
+    #merely chiller 1
+    X = []
+    for xi in range(0, ed-st, 1):
+        X.append([])
+        
+    for fi in range(TN):
+        arr = returnDataA(1, fi)[3][st:ed]
+        for xi in range(0, ed-st, 1):
+            X[xi].append(arr[xi])
+    
+    y = []
+    cop = []
+    cop = returnDataA(1, TCOP)[3][st:ed]
+    for yi in range(0, ed-st, 1):
+        y.append(cop[yi])
+    
+    #clustered samples
+    if mode == 3 or mode == 4 or mode == 6 or mode == 7: 
+        X0 = []
+        y0 = []
+        X0 = deepcopy(X)
+        y0 = deepcopy(y)
+            
+        #http://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsRegressor.html
+        if mode == 3: #single chiller clustering            
+            #print 'clustered X, y' ###
+            #print X[1:5], y[1:5] ###
+            #print ###
+            #from sklearn.neighbors import NearestNeighbors
+            neigh = NearestNeighbors()
+            neigh.fit(X0) 
+            
+            d, xis = neigh.kneighbors([pX])
+            X = []
+            y = []
+            for i in range(len(xis)):
+                for xi in xis[i]:
+                    #print xi
+                    #print X0[xi]
+                    X.append(X0[xi])
+                    y.append(y0[xi]) #share the common index
+            
+    #        print 'X, y'
+    #        print X
+    #        print y
+        elif mode == 4: #clustering chillers of the same type
+            #CN = CSN #chillers of the same type
+            
+            X = []
+            y = []
+            Xt = []
+            yt = []
+            for ci in range(CSN):
+                
+                for xi in range(0, ed-st, 1):
+                    Xt.append([])
+                    
+                for fi in range(TN):
+                    arr = returnDataA(ci, fi)[3][st:ed]
+                    for xi in range(0, ed-st, 1):
+                        Xt[ci*(ed-st)+xi].append(arr[xi])
+                
+                
+                cop = []
+                cop = returnDataA(ci, TCOP)[3][st:ed]
+                for yi in range(0, ed-st, 1):
+                    yt.append(cop[yi])
+                    
+#            Xt = []
+#            yt = []
+#            for ci in range(CSN):
+#                cop = []
+#                cop = returnDataA(ci, TCOP)[3][st:ed]
+#                                                      
+#                for i in range(0, ed-st, 1):
+#                    Xt.append([])
+#                    yt.append(cop[i])
+#                    for fi in range(TN):
+#                        arr = returnDataA(ci, fi)[3][st:ed]
+#                        Xt[-1].append(arr[i]) 
+                                              
+#            print 'clustering', pX ###
+#            print 'ed, st', ed, st###
+#            print ###
+#            print 'X, y' ###
+#            print Xt[-5:-1] ###
+#            print yt[-5:-1] ###
+#            print ###
+            #from sklearn.neighbors import NearestNeighbors
+            neigh = NearestNeighbors()#
+            neigh.fit(Xt) 
+            X0 = []
+            y0 = []
+            X0 = deepcopy(Xt)
+            y0 = deepcopy(yt)
+            d, xis = neigh.kneighbors([pX])
+            
+            for i in range(len(xis)):
+                for xi in xis[i]:
+                    #print xi
+                    #print X0[xi]
+                    X.append(X0[xi])
+                    y.append(y0[xi]) #share the common index
+        elif mode == 6: #clustering chillers of all types
+            
+            X = []
+            y = []
+                                    
+
+            for ci in range(0, CAN,1):
+                for xi in range(0, ed-st, 1):
+                    X.append([])
+                    
+                for fi in range(TN):
+                    arr = returnDataA(ci, fi)[3][st:ed]
+                    for xi in range(0, ed-st, 1):
+                        X[(ci)*(ed-st)+xi].append(arr[xi])
+                
+                cop = []
+                cop = returnDataA(ci, TCOP)[3][st:ed]
+                for yi in range(0, ed-st, 1):
+                    y.append(cop[yi])
+        elif mode == 7: #clustering all chillers 
+            
+            X = []
+            y = []
+                     
+            Xt = []
+            yt = []
+            for ci in range(CAN):
+                
+                for xi in range(0, ed-st, 1):
+                    Xt.append([])
+                    
+                for fi in range(TN):
+                    arr = returnDataA(ci, fi)[3][st:ed]
+                    for xi in range(0, ed-st, 1):
+                        Xt[ci*(ed-st)+xi].append(arr[xi])
+                
+                
+                cop = []
+                cop = returnDataA(ci, TCOP)[3][st:ed]
+                for yi in range(0, ed-st, 1):
+                    yt.append(cop[yi])
+                    
+            kmeans = KMeans(n_clusters=5)#n_clusters=2, random_state=0
+            XtCs = kmeans.fit_predict(Xt) 
+            X0 = []
+            y0 = []
+            X0 = deepcopy(Xt)
+            y0 = deepcopy(yt)
+            pXCs = kmeans.predict([pX])
+            pXC = pXCs[0] #which cluster is pX
+            
+            #print X0
+            #print y0
+            for xi in range(len(XtCs)):
+                if XtCs[xi] == pXC: #take the samples from the same cluster
+                #print xi
+                #print X0[xi]
+                    X.append(X0[xi])
+                    y.append(y0[xi]) #share the common index
+            #print 'Length', len(X), len(y)
+            
+          
+    return X, y
+
 def SavetoInfluxdbX(chiller, num_chiller, num_typeData, data, timestamp, database_name):
 
     client.create_database(database_name)
